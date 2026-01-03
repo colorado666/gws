@@ -23,6 +23,7 @@ type cmd struct {
 	clientID string
 	connID   uint64
 	conn     Connection
+	timeout  int64 // 超时时间
 }
 
 type Wheel struct {
@@ -39,7 +40,7 @@ type Wheel struct {
 
 	// channels
 	cmdCh     chan cmd
-	timeoutCh chan TimeoutCandidate
+	timeoutCh chan TimeoutInfo
 
 	// 池化处理：pools & workers
 	taskPool sync.Pool
@@ -54,7 +55,7 @@ type Wheel struct {
 // New 创建时间轮。Start 后会启动：
 // 1) wheel 主 goroutine（处理 cmd、tick 扫描）
 // 2) worker pool（消费 timeout 事件并调用 handler）
-func New(parent context.Context, opt Options, handler TimeoutHandler) (*Wheel, error) {
+func NewWheel(parent context.Context, opt Options, handler TimeoutHandler) (*Wheel, error) {
 	if handler == nil {
 		return nil, errors.New("handler must not be nil")
 	}
@@ -65,11 +66,11 @@ func New(parent context.Context, opt Options, handler TimeoutHandler) (*Wheel, e
 	w := &Wheel{
 		opt:       opt,
 		cur:       0,
-		wheelSize: opt.WheelSize,
-		slots:     make([][]*task, opt.WheelSize),
+		wheelSize: opt.SlotSize,
+		slots:     make([][]*task, opt.SlotSize),
 		tasks:     make(map[string]*task, opt.ExpectedConnections),
 		cmdCh:     make(chan cmd, opt.CmdBuffer),
-		timeoutCh: make(chan TimeoutCandidate, opt.TimeoutBuffer),
+		timeoutCh: make(chan TimeoutInfo, opt.TimeoutBuffer),
 		ctx:       ctx,
 		cancel:    cancel,
 	}
@@ -117,12 +118,13 @@ func (w *Wheel) Stop() {
 
 // AddConnection：添加/替换某 client 的当前连接。
 // 注意：调用方可在重连时先 Upsert ConnectionManage，再 AddConnection 到 timewheel。
-func (w *Wheel) AddConnection(conn Connection) {
+func (w *Wheel) AddConnection(conn Connection, timeout int64) {
 	w.cmdCh <- cmd{
 		typ:      cmdAdd,
 		clientID: conn.ClientID(),
 		connID:   conn.ConnID(),
 		conn:     conn,
+		timeout:  timeout,
 	}
 	w.opt.Metrics.SetCmdQueueLen(len(w.cmdCh))
 }
@@ -177,13 +179,14 @@ func (w *Wheel) handleCmd(c cmd) {
 		t.clientID = c.clientID
 		t.connID = c.connID
 		t.conn = c.conn
+		t.timeout = c.timeout
 		t.rounds = 0
 
 		w.tasks[c.clientID] = t
 
 		// 初次调度：now + timeout
 		nowTs := time.Now().Unix()
-		w.scheduleAt(t, nowTs+w.opt.Timeout, nowTs)
+		w.scheduleAt(t, nowTs+c.timeout, nowTs)
 
 	case cmdDel:
 		cur := w.tasks[c.clientID]
@@ -205,7 +208,6 @@ func (w *Wheel) onTick(now time.Time) {
 	w.opt.Metrics.ObserveBucketSize(len(bucket))
 
 	nowS := now.Unix()
-	timeoutS := w.opt.Timeout
 
 	for _, t := range bucket {
 		// stale：tasks[clientID] 指向的不是该 task，说明已重连/重复 add 覆盖
@@ -231,8 +233,8 @@ func (w *Wheel) onTick(now time.Time) {
 			continue
 		}
 
-		lastS := t.conn.LastRxUnix()
-		deadlineS := lastS + timeoutS
+		lastS := t.conn.LastRx()
+		deadlineS := lastS + t.timeout
 
 		if nowS >= deadlineS {
 			// 到期：尝试投递 timeout 候选（不阻塞，不丢）
@@ -254,11 +256,11 @@ func (w *Wheel) onTick(now time.Time) {
 }
 
 func (w *Wheel) tryEnqueueTimeout(t *task, now int64) bool {
-	cand := TimeoutCandidate{
+	cand := TimeoutInfo{
 		ClientID: t.clientID,
 		ConnID:   t.connID,
 		Now:      now,
-		Timeout:  w.opt.Timeout,
+		Timeout:  t.timeout,
 	}
 
 	select {
@@ -300,6 +302,7 @@ func (w *Wheel) putTask(t *task) {
 	t.connID = 0
 	t.conn = nil
 	t.rounds = 0
+	t.timeout = 0
 	w.taskPool.Put(t)
 }
 

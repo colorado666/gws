@@ -9,14 +9,13 @@ import (
 type Connection interface {
 	ClientID() string
 	ConnID() uint64
-
-	LastRxUnix() int64
+	LastRx() int64
 	IsClosed() bool
 }
 
-// TimeoutCandidate 是 timewheel 产生的“超时事件”。
+// TimeoutInfo 是 timewheel 产生的“超时事件”。
 // 业务侧处理时必须二次校验（当前 connID、lastRx 是否仍超时），防止误判。
-type TimeoutCandidate struct {
+type TimeoutInfo struct {
 	ClientID string
 	ConnID   uint64
 	Now      int64 // 当前时间，单位秒
@@ -25,7 +24,7 @@ type TimeoutCandidate struct {
 
 // TimeoutHandler 由业务侧实现：例如 ConnectionManage.HandleTimeoutCandidate。
 type TimeoutHandler interface {
-	HandleTimeout(ctx context.Context, c TimeoutCandidate)
+	HandleTimeout(ctx context.Context, c TimeoutInfo)
 }
 
 // ---- internal task types ----
@@ -34,6 +33,6 @@ type task struct {
 	clientID string
 	connID   uint64
 	conn     Connection
-
-	rounds int32
+	timeout  int64 // 超时时间
+	rounds   int32 // 圈数，如果超时时间超过一圈，需要记录圈数
 }

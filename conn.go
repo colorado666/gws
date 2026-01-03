@@ -94,6 +94,8 @@ type Conn struct {
 	turnID   atomic.Uint64 // 会话 ID。客户端发起新的消息，视为一次会话。
 	lastRx   atomic.Int64  // 最近消息时间戳，单位秒。
 	state    atomic.Uint32 // 状态机
+
+	timeout int64 // 超时时间，单位秒，初始化传入，不需要运行时修改
 }
 
 func (c *Conn) SetClientID(clientID string) { c.clientID = clientID }
@@ -108,17 +110,11 @@ func (c *Conn) SetTurnID(x uint64) { c.turnID.Store(x) }
 func (c *Conn) State() uint32     { return c.state.Load() }
 func (c *Conn) SetState(x uint32) { c.state.Store(x) }
 
-func (c *Conn) LastRx() int64  { return c.lastRx.Load() }
-func (c *Conn) IsClosed() bool { return c.closed.Load() }
+func (c *Conn) LastRx() int64     { return c.lastRx.Load() }
+func (c *Conn) Touch(nowTs int64) { c.lastRx.Store(nowTs) }
 
-// 业务侧：任意消息到来（含心跳）调用 Touch，无锁更新 lastRx。
-func (c *Conn) Touch(nowTs int64) {
-	c.lastRx.Store(nowTs)
-}
-
-func (c *Conn) CloseMark() {
-	c.closed.Store(true)
-}
+func (c *Conn) IsClosed() bool       { return c.closed.Load() }
+func (c *Conn) SetClose(status bool) { c.closed.Store(status) }
 
 // ReadLoop
 // 循环读取消息. 如果复用了HTTP Server, 建议开启goroutine, 阻塞会导致请求上下文无法被GC.

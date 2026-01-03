@@ -5,9 +5,8 @@ import (
 )
 
 type Options struct {
-	Tick      int64 // 轮询时间间隔，单位秒
-	Timeout   int64 // 心跳超时时间，单位秒
-	WheelSize int   // <=0 则使用 Timeout/Tick 的近似值（至少 1）
+	Tick     int64 // 轮询时间间隔，单位秒
+	SlotSize int   // <=0 则使用 Timeout/Tick 的近似值（至少 1）
 
 	// 队列容量
 	CmdBuffer     int // add/del 命令队列， 考虑到 add 事件峰值可能很大，建议设置为最大并发的 10%以上
@@ -25,16 +24,16 @@ type Options struct {
 }
 
 func (o *Options) normalize() {
-	if o.Tick <= 0 {
+	// Tick 太大，精度会变小
+	if o.Tick <= 0 || o.Tick > 20 {
 		o.Tick = 3 //默认3秒
 	}
-	if o.Timeout <= 0 {
-		o.Timeout = 360 //默认360秒
-	}
-	if o.WheelSize <= 0 {
-		o.WheelSize = int(o.Timeout / o.Tick)
-		if o.WheelSize < 1 {
-			o.WheelSize = 1
+
+	// 默认一圈是 360 秒. 最少是 10 个 slot
+	if o.SlotSize <= 0 {
+		o.SlotSize = int(360 / o.Tick)
+		if o.SlotSize < 10 {
+			o.SlotSize = 10
 		}
 	}
 

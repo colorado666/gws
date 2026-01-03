@@ -3,6 +3,7 @@ package gws
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/tls"
 	"errors"
 	"net"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/lxzan/gws/internal"
+	"github.com/lxzan/gws/timewheel"
 )
 
 type responseWriter struct {
@@ -96,6 +98,9 @@ type Upgrader struct {
 	option       *ServerOption
 	deflaterPool *deflaterPool
 	eventHandler Event
+
+	tw    *timewheel.Wheel              // 时间轮
+	conns *ConcurrentMap[string, *Conn] // 多 shard 连接管理
 }
 
 // NewUpgrader 创建一个新的 Upgrader 实例
@@ -106,10 +111,63 @@ func NewUpgrader(eventHandler Event, option *ServerOption) *Upgrader {
 		eventHandler: eventHandler,
 		deflaterPool: new(deflaterPool),
 	}
+
+	// 时间轮管理器
+	var err error
+	u.tw, err = timewheel.NewWheel(
+		context.Background(),
+		timewheel.Options{
+			Tick:     u.option.Tick,
+			SlotSize: u.option.SlotSize,
+		}, u)
+
+	if err != nil {
+		panic(err)
+	}
+
+	// 多 shard 连接管理
+	u.conns = NewConcurrentMap[string, *Conn](u.option.ShardNum, (u.option.ShardInitCap))
+
 	if u.option.PermessageDeflate.Enabled {
 		u.deflaterPool.initialize(u.option.PermessageDeflate, option.ReadMaxPayloadSize)
 	}
 	return u
+}
+
+// 待完善
+func (c *Upgrader) HandleTimeout(ctx context.Context, info timewheel.TimeoutInfo) {
+	_ = ctx // 预留：用于 tracing/cancellation
+
+	cur, ok := c.conns.Load(info.ClientID)
+	if !ok {
+		return
+	}
+	if cur.connID != info.ConnID {
+		// 已重连，忽略旧候选
+		return
+	}
+
+	// 重新检查，避免误报 load lastRx
+	expiredAt := cur.lastRx.Load() + cur.timeout
+	if info.Now < expiredAt {
+		// 并发导致的误报
+		return
+	}
+
+	// 真正下线：标记关闭 + 删除映射（随后 close socket 等）
+	cur.SetClose(true)
+	c.conns.Delete(info.ClientID)
+
+	// TODO: 关闭底层连接/回收资源/业务通知等
+	// log/metrics 在这里做更合适
+	// TODO：也可以调用 OnTimeOut 的回调
+}
+
+// 当有新的连接，需添加到 shard 中，并添加到时间轮
+// Adds a new connection to the shard and the time wheel
+func (c *Upgrader) AddNewConn(conn *Conn) {
+	c.conns.Store(conn.clientID, conn)
+	c.tw.AddConnection(conn, conn.timeout)
 }
 
 // 劫持 HTTP 连接并返回底层的网络连接和缓冲读取器

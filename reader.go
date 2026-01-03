@@ -74,8 +74,7 @@ func (c *Conn) readMessage() error {
 		return err
 	}
 
-	// 只要有任何数据包到达，都更新 lastRx
-	c.lastRx.Store(NowSec())
+	c.lastRx.Store(NowSec()) // 更新最后接收时间
 
 	if contentLength > c.config.ReadMaxPayloadSize {
 		return internal.CloseMessageTooLarge

@@ -192,6 +192,18 @@ type (
 		// Whether UTF-8 check is enabled
 		CheckUtf8Enabled bool
 
+		// 时间轮的参数
+		Tick     int64 // 轮询时间间隔，单位秒
+		SlotSize int   // 默认使用 360/Tick 取整
+
+		// shard 数量
+		// Number of shards
+		ShardNum uint64
+
+		// shard 初始化容量
+		// Initial capacity for each shard
+		ShardInitCap uint64
+
 		// 日志记录器
 		// Logger
 		Logger Logger

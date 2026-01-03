@@ -11,10 +11,10 @@ type workerPool struct {
 	cancel  context.CancelFunc
 	handler TimeoutHandler
 
-	events <-chan TimeoutCandidate
+	events <-chan TimeoutInfo
 }
 
-func newWorkerPool(parent context.Context, n int, events <-chan TimeoutCandidate, h TimeoutHandler) *workerPool {
+func newWorkerPool(parent context.Context, n int, events <-chan TimeoutInfo, h TimeoutHandler) *workerPool {
 	ctx, cancel := context.WithCancel(parent)
 	p := &workerPool{
 		ctx:     ctx,
