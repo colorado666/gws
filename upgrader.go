@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/lxzan/gws/internal"
@@ -240,7 +241,7 @@ func (c *Upgrader) doUpgradeFromConn(netConn net.Conn, br *bufio.Reader, r *http
 		continuationFrame: continuationFrame{},
 		fh:                frameHeader{},
 		handler:           c.eventHandler,
-		closed:            0,
+		closed:            atomic.Uint32{},
 		writeQueue:        workerQueue{maxConcurrency: 1},
 		readQueue:         make(channel, c.option.ParallelGolimit),
 	}

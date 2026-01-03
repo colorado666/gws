@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/lxzan/gws/internal"
@@ -187,7 +188,7 @@ func (c *connector) handshake() (*Conn, *http.Response, error) {
 		continuationFrame: continuationFrame{},
 		fh:                frameHeader{},
 		handler:           c.eventHandler,
-		closed:            0,
+		closed:            atomic.Uint32{},
 		deflater:          new(deflater),
 		writeQueue:        workerQueue{maxConcurrency: 1},
 		readQueue:         make(channel, c.option.ParallelGolimit),

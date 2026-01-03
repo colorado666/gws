@@ -29,7 +29,7 @@ func serveWebSocket(
 		ss:          session,
 		config:      config,
 		conn:        netConn,
-		closed:      0,
+		closed:      atomic.Uint32{},
 		br:          br,
 		fh:          frameHeader{},
 		handler:     handler,

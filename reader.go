@@ -73,6 +73,10 @@ func (c *Conn) readMessage() error {
 	if err != nil {
 		return err
 	}
+
+	// 只要有任何数据包到达，都更新 lastRx
+	c.lastRx.Store(NowSec())
+
 	if contentLength > c.config.ReadMaxPayloadSize {
 		return internal.CloseMessageTooLarge
 	}

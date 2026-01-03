@@ -15,7 +15,7 @@ import (
 // If you don't have any special needs, we recommend code=1000, reason=nil
 // https://developer.mozilla.org/zh-CN/docs/Web/API/CloseEvent#status_codes
 func (c *Conn) WriteClose(code uint16, reason []byte) error {
-	if atomic.CompareAndSwapUint32(&c.closed, 0, 1) {
+	if c.closed.CompareAndSwap(0, 1) {
 		var buf = binaryPool.Get(128)
 		code = internal.SelectValue(code < 1000, 1000, code)
 		buf.Write(internal.StatusCode(code).Bytes())

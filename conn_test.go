@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -26,7 +25,7 @@ func (c *webSocketMocker) reset(socket *Conn, reader *bytes.Buffer, writer *byte
 	reader.Reset()
 	writer.Reset()
 	socket.br.Reset(reader)
-	atomic.StoreUint32(&socket.closed, 0)
+	socket.closed.Store(0)
 }
 
 func (c *webSocketMocker) OnOpen(socket *Conn) {

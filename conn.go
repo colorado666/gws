@@ -62,7 +62,7 @@ type Conn struct {
 
 	// 关闭状态
 	// Closed state
-	closed uint32
+	closed atomic.Uint32
 
 	// 读取队列
 	// Read queue
@@ -87,7 +87,22 @@ type Conn struct {
 	// 压缩拓展配置
 	// Compression extension configuration
 	pd PermessageDeflate
+
+	// 扩展的字段
+	clientID string        // 客户端唯一 ID。固定不变。
+	connID   uint64        // connection ID，连接唯一 ID。重连会改变。
+	turnID   atomic.Uint64 // 会话 ID。客户端发起新的消息，视为一次会话。
+	lastRx   atomic.Int64  // 最近消息时间戳，单位秒。
+	state    atomic.Uint32 // 状态机
 }
+
+func (c *Conn) ClientID() string   { return c.clientID }
+func (c *Conn) ConnID() uint64     { return c.connID }
+func (c *Conn) TurnID() uint64     { return c.turnID.Load() }
+func (c *Conn) SetTurnID(x uint64) { c.turnID.Store(x) }
+func (c *Conn) State() uint32      { return c.state.Load() }
+func (c *Conn) SetState(x uint32)  { c.state.Store(x) }
+func (c *Conn) LastRx() int64      { return c.lastRx.Load() }
 
 // ReadLoop
 // 循环读取消息. 如果复用了HTTP Server, 建议开启goroutine, 阻塞会导致请求上下文无法被GC.
@@ -128,7 +143,7 @@ func (c *Conn) ReadLoop() {
 // 检查连接是否已关闭
 // Checks if the connection is closed
 func (c *Conn) isClosed() bool {
-	return atomic.LoadUint32(&c.closed) == 1
+	return c.closed.Load() == 1
 }
 
 // 处理错误事件
@@ -138,7 +153,7 @@ func (c *Conn) emitError(reading bool, err error) {
 		return
 	}
 
-	if atomic.CompareAndSwapUint32(&c.closed, 0, 1) {
+	if c.closed.CompareAndSwap(0, 1) {
 		// 待发送的错误码和错误原因
 		// Error code to be sent and cause of error
 		var sendCode, sendErr = internal.CloseGoingAway, error(internal.CloseGoingAway)
@@ -191,7 +206,7 @@ func (c *Conn) emitClose(buf *bytes.Buffer) error {
 			responseCode = internal.CloseUnsupportedData
 		}
 	}
-	if atomic.CompareAndSwapUint32(&c.closed, 0, 1) {
+	if c.closed.CompareAndSwap(0, 1) {
 		_ = c.writeClose(&CloseError{Code: realCode, Reason: buf.Bytes()}, responseCode.Bytes())
 	}
 	return internal.CloseNormalClosure
