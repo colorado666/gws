@@ -15,7 +15,7 @@ import (
 // If you don't have any special needs, we recommend code=1000, reason=nil
 // https://developer.mozilla.org/zh-CN/docs/Web/API/CloseEvent#status_codes
 func (c *Conn) WriteClose(code uint16, reason []byte) error {
-	if c.closed.CompareAndSwap(0, 1) {
+	if c.closed.CompareAndSwap(false, true) {
 		var buf = binaryPool.Get(128)
 		code = internal.SelectValue(code < 1000, 1000, code)
 		buf.Write(internal.StatusCode(code).Bytes())
@@ -116,7 +116,7 @@ func (c *Conn) doWrite(opcode Opcode, payload internal.Payload) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if opcode != OpcodeCloseConnection && c.isClosed() {
+	if opcode != OpcodeCloseConnection && c.IsClosed() {
 		return ErrConnClosed
 	}
 
@@ -245,7 +245,7 @@ func NewBroadcaster(opcode Opcode, payload []byte) *Broadcaster {
 // 将帧数据写入连接
 // Writes the frame data to the connection
 func (c *Broadcaster) writeFrame(socket *Conn, frame *bytes.Buffer) error {
-	if socket.isClosed() {
+	if socket.IsClosed() {
 		return ErrConnClosed
 	}
 	socket.mu.Lock()

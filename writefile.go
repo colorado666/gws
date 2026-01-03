@@ -81,7 +81,7 @@ func (c *Conn) doWriteFile(opcode Opcode, payload io.Reader) error {
 		if c.pd.Enabled && index == 0 {
 			frame.Bytes()[0] |= uint8(64)
 		}
-		if c.isClosed() {
+		if c.IsClosed() {
 			return ErrConnClosed
 		}
 		err = internal.WriteN(c.conn, frame.Bytes())

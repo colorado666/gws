@@ -62,7 +62,7 @@ type Conn struct {
 
 	// 关闭状态
 	// Closed state
-	closed atomic.Uint32
+	closed atomic.Bool
 
 	// 读取队列
 	// Read queue
@@ -103,6 +103,7 @@ func (c *Conn) SetTurnID(x uint64) { c.turnID.Store(x) }
 func (c *Conn) State() uint32      { return c.state.Load() }
 func (c *Conn) SetState(x uint32)  { c.state.Store(x) }
 func (c *Conn) LastRx() int64      { return c.lastRx.Load() }
+func (c *Conn) IsClosed() bool     { return c.closed.Load() }
 
 // ReadLoop
 // 循环读取消息. 如果复用了HTTP Server, 建议开启goroutine, 阻塞会导致请求上下文无法被GC.
@@ -140,12 +141,6 @@ func (c *Conn) ReadLoop() {
 	}
 }
 
-// 检查连接是否已关闭
-// Checks if the connection is closed
-func (c *Conn) isClosed() bool {
-	return c.closed.Load() == 1
-}
-
 // 处理错误事件
 // Handle the error event
 func (c *Conn) emitError(reading bool, err error) {
@@ -153,7 +148,7 @@ func (c *Conn) emitError(reading bool, err error) {
 		return
 	}
 
-	if c.closed.CompareAndSwap(0, 1) {
+	if c.closed.CompareAndSwap(false, true) {
 		// 待发送的错误码和错误原因
 		// Error code to be sent and cause of error
 		var sendCode, sendErr = internal.CloseGoingAway, error(internal.CloseGoingAway)
@@ -206,7 +201,7 @@ func (c *Conn) emitClose(buf *bytes.Buffer) error {
 			responseCode = internal.CloseUnsupportedData
 		}
 	}
-	if c.closed.CompareAndSwap(0, 1) {
+	if c.closed.CompareAndSwap(false, true) {
 		_ = c.writeClose(&CloseError{Code: realCode, Reason: buf.Bytes()}, responseCode.Bytes())
 	}
 	return internal.CloseNormalClosure

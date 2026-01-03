@@ -188,7 +188,7 @@ func (c *connector) handshake() (*Conn, *http.Response, error) {
 		continuationFrame: continuationFrame{},
 		fh:                frameHeader{},
 		handler:           c.eventHandler,
-		closed:            atomic.Uint32{},
+		closed:            atomic.Bool{},
 		deflater:          new(deflater),
 		writeQueue:        workerQueue{maxConcurrency: 1},
 		readQueue:         make(channel, c.option.ParallelGolimit),

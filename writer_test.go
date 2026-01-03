@@ -133,7 +133,7 @@ func TestWriteClose(t *testing.T) {
 		server.WriteClose(1000, []byte("goodbye"))
 		wg.Wait()
 		var socket = &Conn{config: server.config}
-		socket.closed.Store(1)
+		socket.closed.Store(true)
 		socket.WriteMessage(OpcodeText, nil)
 		socket.WriteAsync(OpcodeText, nil, nil)
 	})
@@ -208,7 +208,7 @@ func TestConn_WriteAsyncError(t *testing.T) {
 		var serverOption = &ServerOption{}
 		var clientOption = &ClientOption{}
 		server, _ := newPeer(serverHandler, serverOption, clientHandler, clientOption)
-		server.closed.Store(1)
+		server.closed.Store(true)
 		server.WriteAsync(OpcodeText, nil, nil)
 	})
 

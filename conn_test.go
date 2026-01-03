@@ -25,7 +25,7 @@ func (c *webSocketMocker) reset(socket *Conn, reader *bytes.Buffer, writer *byte
 	reader.Reset()
 	writer.Reset()
 	socket.br.Reset(reader)
-	socket.closed.Store(0)
+	socket.closed.Store(false)
 }
 
 func (c *webSocketMocker) OnOpen(socket *Conn) {
