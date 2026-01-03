@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lxzan/gws/internal"
+	"github.com/colorado666/gws/internal"
 )
 
 // Conn WebSocket连接

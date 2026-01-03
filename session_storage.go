@@ -3,8 +3,8 @@ package gws
 import (
 	"sync"
 
+	"github.com/colorado666/gws/internal"
 	"github.com/dolthub/maphash"
-	"github.com/lxzan/gws/internal"
 )
 
 // SessionStorage 会话存储

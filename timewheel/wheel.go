@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lxzan/gws/metrics"
+	"github.com/colorado666/gws/metrics"
 )
 
 // 通过向 cmdCh 发送 cmd 的方式，添加/删除 task，实现无锁操作

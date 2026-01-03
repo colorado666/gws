@@ -1,7 +1,7 @@
 package timewheel
 
 import (
-	"github.com/lxzan/gws/metrics"
+	"github.com/colorado666/gws/metrics"
 )
 
 type Options struct {

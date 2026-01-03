@@ -10,8 +10,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/colorado666/gws/internal"
 	"github.com/klauspost/compress/flate"
-	"github.com/lxzan/gws/internal"
 )
 
 // deflate压缩算法的尾部标记

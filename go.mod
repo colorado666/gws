@@ -1,4 +1,4 @@
-module github.com/lxzan/gws
+module github.com/colorado666/gws
 
 go 1.20
 

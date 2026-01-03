@@ -7,8 +7,8 @@ import (
 	"io"
 	"math"
 
+	"github.com/colorado666/gws/internal"
 	"github.com/klauspost/compress/flate"
-	"github.com/lxzan/gws/internal"
 )
 
 const segmentSize = 128 * 1024

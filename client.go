@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lxzan/gws/internal"
+	"github.com/colorado666/gws/internal"
 )
 
 // Dialer 拨号器接口

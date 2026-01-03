@@ -1,6 +1,6 @@
 package gws
 
-import "github.com/lxzan/gws/internal"
+import "github.com/colorado666/gws/internal"
 
 var (
 	framePadding    = frameHeader{}            // 帧头填充物

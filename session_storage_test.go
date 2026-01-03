@@ -3,8 +3,8 @@ package gws
 import (
 	"testing"
 
+	"github.com/colorado666/gws/internal"
 	"github.com/dolthub/maphash"
-	"github.com/lxzan/gws/internal"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -13,9 +13,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lxzan/gws/internal"
-	"github.com/lxzan/gws/snowflake"
-	"github.com/lxzan/gws/timewheel"
+	"github.com/colorado666/gws/internal"
+	"github.com/colorado666/gws/snowflake"
+	"github.com/colorado666/gws/timewheel"
 )
 
 type responseWriter struct {

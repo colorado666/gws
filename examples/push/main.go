@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/lxzan/gws"
+	"github.com/colorado666/gws"
 )
 
 func main() {

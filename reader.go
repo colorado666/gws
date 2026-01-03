@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/lxzan/gws/internal"
+	"github.com/colorado666/gws/internal"
 )
 
 // 检查掩码设置是否符合 RFC6455 协议。

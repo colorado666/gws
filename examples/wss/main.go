@@ -5,7 +5,7 @@ import (
 	"log"
 	"path/filepath"
 
-	"github.com/lxzan/gws"
+	"github.com/colorado666/gws"
 )
 
 var dir string
