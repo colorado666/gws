@@ -55,3 +55,5 @@ func (c *WebSocket) OnMessage(socket *gws.Conn, message *gws.Message) {
 	defer message.Close()
 	fmt.Printf("recv: %s\n", message.Data.String())
 }
+func (c *WebSocket) OnTimeout(socket *gws.Conn) {
+}

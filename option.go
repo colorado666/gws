@@ -196,6 +196,10 @@ type (
 		Tick     int64 // 轮询时间间隔，单位秒
 		SlotSize int   // 默认使用 360/Tick 取整
 
+		// 连接超时时间，单位秒
+		// Connection timeout in seconds
+		ConnectionTimeout int64
+
 		// shard 数量
 		// Number of shards
 		ShardNum uint64
@@ -353,6 +357,21 @@ func initServerOption(c *ServerOption) *ServerOption {
 		}
 	}
 
+	if c.Tick <= 0 {
+		c.Tick = 3
+	}
+	if c.SlotSize <= 0 {
+		c.SlotSize = int(360 / c.Tick)
+	}
+	if c.ConnectionTimeout <= 0 {
+		c.ConnectionTimeout = 60
+	}
+	if c.ShardNum <= 0 {
+		c.ShardNum = 16
+	}
+	if c.ShardInitCap <= 0 {
+		c.ShardInitCap = 1024
+	}
 	return c
 }
 

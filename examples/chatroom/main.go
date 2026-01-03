@@ -129,3 +129,5 @@ func (c *WebSocket) OnMessage(socket *gws.Conn, message *gws.Message) {
 		_ = conn.WriteMessage(gws.OpcodeText, message.Bytes())
 	}
 }
+func (c *WebSocket) OnTimeout(socket *gws.Conn) {
+}

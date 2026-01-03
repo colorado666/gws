@@ -58,6 +58,9 @@ func (c *webSocketMocker) OnMessage(socket *Conn, message *Message) {
 	}
 }
 
+func (c *webSocketMocker) OnTimeout(socket *Conn) {
+}
+
 func TestOthers(t *testing.T) {
 	conn, _ := net.Pipe()
 	upgrader := NewUpgrader(new(BuiltinEventHandler), nil)

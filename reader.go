@@ -74,7 +74,8 @@ func (c *Conn) readMessage() error {
 		return err
 	}
 
-	c.lastRx.Store(NowSec()) // 更新最后接收时间
+	// 更新最后接收时间
+	c.Touch(NowSec())
 
 	if contentLength > c.config.ReadMaxPayloadSize {
 		return internal.CloseMessageTooLarge

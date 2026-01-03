@@ -68,6 +68,8 @@ func (c *WebSocket) OnMessage(socket *gws.Conn, message *gws.Message) {
 		socket.WriteAsync(message.Opcode, message.Bytes(), func(err error) { _ = message.Close() })
 	}
 }
+func (c *WebSocket) OnTimeout(socket *gws.Conn) {
+}
 
 type updateReportsHandler struct {
 	onexit chan struct{}

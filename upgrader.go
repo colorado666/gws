@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/lxzan/gws/internal"
+	"github.com/lxzan/gws/snowflake"
 	"github.com/lxzan/gws/timewheel"
 )
 
@@ -99,6 +100,7 @@ type Upgrader struct {
 	deflaterPool *deflaterPool
 	eventHandler Event
 
+	node  *snowflake.Node               // 用于生成唯一 ID
 	tw    *timewheel.Wheel              // 时间轮
 	conns *ConcurrentMap[string, *Conn] // 多 shard 连接管理
 }
@@ -112,6 +114,7 @@ func NewUpgrader(eventHandler Event, option *ServerOption) *Upgrader {
 		deflaterPool: new(deflaterPool),
 	}
 
+	u.node, _ = snowflake.NewNode(1)
 	// 时间轮管理器
 	var err error
 	u.tw, err = timewheel.NewWheel(
@@ -148,26 +151,28 @@ func (c *Upgrader) HandleTimeout(ctx context.Context, info timewheel.TimeoutInfo
 	}
 
 	// 重新检查，避免误报 load lastRx
-	expiredAt := cur.lastRx.Load() + cur.timeout
+	expiredAt := cur.lastRx.Load() + c.option.ConnectionTimeout
 	if info.Now < expiredAt {
 		// 并发导致的误报
 		return
 	}
 
+	// 触发超时事件
+	c.eventHandler.OnTimeout(cur)
+
 	// 真正下线：标记关闭 + 删除映射（随后 close socket 等）
 	cur.SetClose(true)
 	c.conns.Delete(info.ClientID)
 
-	// TODO: 关闭底层连接/回收资源/业务通知等
-	// log/metrics 在这里做更合适
-	// TODO：也可以调用 OnTimeOut 的回调
+	// 关闭底层连接，触发 ReadLoop 退出和资源回收
+	_ = cur.Close()
 }
 
 // 当有新的连接，需添加到 shard 中，并添加到时间轮
 // Adds a new connection to the shard and the time wheel
 func (c *Upgrader) AddNewConn(conn *Conn) {
 	c.conns.Store(conn.clientID, conn)
-	c.tw.AddConnection(conn, conn.timeout)
+	c.tw.AddConnection(conn, c.option.ConnectionTimeout)
 }
 
 // 劫持 HTTP 连接并返回底层的网络连接和缓冲读取器
@@ -303,7 +308,21 @@ func (c *Upgrader) doUpgradeFromConn(netConn net.Conn, br *bufio.Reader, r *http
 		writeQueue:        workerQueue{maxConcurrency: 1},
 		readQueue:         make(channel, c.option.ParallelGolimit),
 	}
-	socket.lastRx.Store(NowSec())
+
+	// 更新最近消息的时间
+	socket.Touch(NowSec())
+
+	// 从 sessionStorage 中解析出来 clientID。作为固定的 sessionID
+	clientID, ok := session.Load("client_id")
+	if !ok {
+		clientID = c.node.Generate().String()
+		session.Store("client_id", clientID)
+	}
+	// 连接 ID 是每次连接都会生成的唯一 ID。
+	socket.connID = uint64(c.node.Generate().Int64())
+
+	// 添加到 shard 和 timewheel
+	c.AddNewConn(socket)
 
 	// 压缩字典和解压字典内存开销比较大, 故使用懒加载
 	// Compressing and decompressing dictionaries has a large memory overhead, so use lazy loading.

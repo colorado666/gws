@@ -110,6 +110,11 @@ type Event interface {
 	// 如果开启了ParallelEnabled, 会并行地调用OnMessage; 没有做recover处理.
 	// If ParallelEnabled is enabled, OnMessage is called in parallel. No recover is done.
 	OnMessage(socket *Conn, message *Message)
+
+	// OnTimeout 超时事件
+	// 连接在指定时间内未收到任何数据帧
+	// Connection did not receive any data frames within the specified time
+	OnTimeout(socket *Conn)
 }
 
 type BuiltinEventHandler struct{}
@@ -123,6 +128,7 @@ func (b BuiltinEventHandler) OnPing(socket *Conn, payload []byte) { _ = socket.W
 func (b BuiltinEventHandler) OnPong(socket *Conn, payload []byte) {}
 
 func (b BuiltinEventHandler) OnMessage(socket *Conn, message *Message) {}
+func (b BuiltinEventHandler) OnTimeout(socket *Conn)                   {}
 
 type frameHeader [frameHeaderSize]byte
 
