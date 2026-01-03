@@ -66,6 +66,8 @@ func TestOthers(t *testing.T) {
 		handler: new(webSocketMocker),
 		config:  upgrader.option.getConfig(),
 	}
+	socket.lastRx.Store(NowSec())
+
 	socket.SetDeadline(time.Time{})
 	socket.SetReadDeadline(time.Time{})
 	socket.SetWriteDeadline(time.Time{})

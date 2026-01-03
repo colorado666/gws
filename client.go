@@ -194,6 +194,8 @@ func (c *connector) handshake() (*Conn, *http.Response, error) {
 		readQueue:         make(channel, c.option.ParallelGolimit),
 	}
 
+	socket.lastRx.Store(NowSec())
+
 	// 压缩字典和解压字典内存开销比较大, 故使用懒加载
 	// Compressing and decompressing dictionaries has a large memory overhead, so use lazy loading.
 	if pd.Enabled {

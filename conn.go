@@ -96,14 +96,29 @@ type Conn struct {
 	state    atomic.Uint32 // 状态机
 }
 
-func (c *Conn) ClientID() string   { return c.clientID }
-func (c *Conn) ConnID() uint64     { return c.connID }
+func (c *Conn) SetClientID(clientID string) { c.clientID = clientID }
+func (c *Conn) ClientID() string            { return c.clientID }
+
+func (c *Conn) SetConnID(connID uint64) { c.connID = connID }
+func (c *Conn) ConnID() uint64          { return c.connID }
+
 func (c *Conn) TurnID() uint64     { return c.turnID.Load() }
 func (c *Conn) SetTurnID(x uint64) { c.turnID.Store(x) }
-func (c *Conn) State() uint32      { return c.state.Load() }
-func (c *Conn) SetState(x uint32)  { c.state.Store(x) }
-func (c *Conn) LastRx() int64      { return c.lastRx.Load() }
-func (c *Conn) IsClosed() bool     { return c.closed.Load() }
+
+func (c *Conn) State() uint32     { return c.state.Load() }
+func (c *Conn) SetState(x uint32) { c.state.Store(x) }
+
+func (c *Conn) LastRx() int64  { return c.lastRx.Load() }
+func (c *Conn) IsClosed() bool { return c.closed.Load() }
+
+// 业务侧：任意消息到来（含心跳）调用 Touch，无锁更新 lastRx。
+func (c *Conn) Touch(nowTs int64) {
+	c.lastRx.Store(nowTs)
+}
+
+func (c *Conn) CloseMark() {
+	c.closed.Store(true)
+}
 
 // ReadLoop
 // 循环读取消息. 如果复用了HTTP Server, 建议开启goroutine, 阻塞会导致请求上下文无法被GC.

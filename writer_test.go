@@ -133,6 +133,7 @@ func TestWriteClose(t *testing.T) {
 		server.WriteClose(1000, []byte("goodbye"))
 		wg.Wait()
 		var socket = &Conn{config: server.config}
+		socket.lastRx.Store(NowSec())
 		socket.closed.Store(true)
 		socket.WriteMessage(OpcodeText, nil)
 		socket.WriteAsync(OpcodeText, nil, nil)
@@ -555,6 +556,8 @@ func TestConn_Writev(t *testing.T) {
 
 func TestConn_Async(t *testing.T) {
 	var conn = &Conn{writeQueue: workerQueue{maxConcurrency: 1}}
+	conn.lastRx.Store(NowSec())
+
 	var wg = sync.WaitGroup{}
 	wg.Add(100)
 	var arr1, arr2 []int64

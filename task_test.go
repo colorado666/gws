@@ -38,6 +38,7 @@ func serveWebSocket(
 		readQueue:   make(channel, 8),
 		pd:          pd,
 	}
+	socket.lastRx.Store(NowSec())
 	if compressEnabled {
 		if isServer {
 			socket.deflater = new(deflaterPool).initialize(pd, config.ReadMaxPayloadSize).Select()
