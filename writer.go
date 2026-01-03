@@ -94,7 +94,11 @@ func (c *Conn) Writev(opcode Opcode, payloads ...[]byte) error {
 // WritevAsync 类似 WriteAsync, 区别是可以一次写入多个切片
 // It's similar to WriteAsync, except that you can write multiple slices at once.
 func (c *Conn) WritevAsync(opcode Opcode, payloads [][]byte, callback func(error)) {
+	prev := c.TurnID()
 	c.Async(func() {
+		if prev != c.TurnID() {
+			return
+		}
 		if err := c.Writev(opcode, payloads...); callback != nil {
 			callback(err)
 		}
