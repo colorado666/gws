@@ -90,7 +90,7 @@ type Conn struct {
 
 	// 扩展的字段
 	clientID string        // 客户端唯一 ID。固定不变。
-	connID   uint64        // connection ID，连接唯一 ID。重连会改变。
+	connID   int64         // connection ID，连接唯一 ID。重连会改变。
 	turnID   atomic.Uint64 // 会话 ID。客户端发起新的消息，视为一次会话。
 	lastRx   atomic.Int64  // 最近消息时间戳，单位秒。
 	state    atomic.Uint32 // 状态机
@@ -99,8 +99,8 @@ type Conn struct {
 func (c *Conn) SetClientID(clientID string) { c.clientID = clientID }
 func (c *Conn) ClientID() string            { return c.clientID }
 
-func (c *Conn) SetConnID(connID uint64) { c.connID = connID }
-func (c *Conn) ConnID() uint64          { return c.connID }
+func (c *Conn) SetConnID(connID int64) { c.connID = connID }
+func (c *Conn) ConnID() int64          { return c.connID }
 
 func (c *Conn) TurnID() uint64     { return c.turnID.Load() }
 func (c *Conn) SetTurnID(x uint64) { c.turnID.Store(x) }

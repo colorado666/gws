@@ -312,14 +312,19 @@ func (c *Upgrader) doUpgradeFromConn(netConn net.Conn, br *bufio.Reader, r *http
 	// 更新最近消息的时间
 	socket.Touch(NowSec())
 
-	// 从 sessionStorage 中解析出来 clientID。作为固定的 sessionID
-	clientID, ok := session.Load("client_id")
-	if !ok {
-		clientID = c.node.Generate().String()
-		session.Store("client_id", clientID)
-	}
 	// 连接 ID 是每次连接都会生成的唯一 ID。
-	socket.connID = uint64(c.node.Generate().Int64())
+	socket.connID = c.node.Generate().Int64()
+
+	// 从 sessionStorage 中解析出来 clientID。作为固定的 sessionID
+	clientIDVal, ok := session.Load("client_id")
+	var clientID string
+	if !ok {
+		clientID = strconv.FormatInt(socket.connID, 10)
+		session.Store("client_id", clientID)
+	} else {
+		clientID, _ = clientIDVal.(string)
+	}
+	socket.clientID = clientID
 
 	// 添加到 shard 和 timewheel
 	c.AddNewConn(socket)

@@ -21,7 +21,7 @@ const (
 type cmd struct {
 	typ      cmdType
 	clientID string
-	connID   uint64
+	connID   int64
 	conn     Connection
 	timeout  int64 // 超时时间
 }
@@ -130,7 +130,7 @@ func (w *Wheel) AddConnection(conn Connection, timeout int64) {
 }
 
 // DelConnection：可选（一般不需要）。仅当你希望“立即”让该 client 不再被 timewheel 管理时使用。
-func (w *Wheel) DelConnection(clientID string, connID uint64) {
+func (w *Wheel) DelConnection(clientID string, connID int64) {
 	w.cmdCh <- cmd{typ: cmdDel, clientID: clientID, connID: connID}
 	w.opt.Metrics.SetCmdQueueLen(len(w.cmdCh))
 }
