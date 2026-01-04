@@ -113,7 +113,7 @@ type (
 // arg0 represents the number of shardings; arg1 represents the initialized capacity of a sharding.
 func NewConcurrentMap[K ~string, V any](num, capacity uint64) *ConcurrentMap[K, V] {
 	if num == 0 {
-		num = 8
+		num = 16
 	}
 
 	if capacity == 0 {

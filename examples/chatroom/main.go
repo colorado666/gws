@@ -40,6 +40,7 @@ func main() {
 			return true
 		},
 	})
+	defer upgrader.Stop()
 
 	http.HandleFunc("/connect", func(writer http.ResponseWriter, request *http.Request) {
 		socket, err := upgrader.Upgrade(writer, request)

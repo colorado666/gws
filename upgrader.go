@@ -103,6 +103,9 @@ type Upgrader struct {
 	node  *snowflake.Node               // 用于生成唯一 ID
 	tw    *timewheel.Wheel              // 时间轮
 	conns *ConcurrentMap[string, *Conn] // 多 shard 连接管理
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // NewUpgrader 创建一个新的 Upgrader 实例
@@ -114,11 +117,13 @@ func NewUpgrader(eventHandler Event, option *ServerOption) *Upgrader {
 		deflaterPool: new(deflaterPool),
 	}
 
+	u.ctx, u.cancel = context.WithCancel(context.Background())
+
 	u.node, _ = snowflake.NewNode(1)
 	// 时间轮管理器
 	var err error
 	u.tw, err = timewheel.NewWheel(
-		context.Background(),
+		u.ctx,
 		timewheel.Options{
 			Tick:     u.option.Tick,
 			SlotSize: u.option.SlotSize,
@@ -128,15 +133,42 @@ func NewUpgrader(eventHandler Event, option *ServerOption) *Upgrader {
 		panic(err)
 	}
 
-	u.tw.Start()
-
 	// 多 shard 连接管理
 	u.conns = NewConcurrentMap[string, *Conn](u.option.ShardNum, (u.option.ShardInitCap))
 
 	if u.option.PermessageDeflate.Enabled {
 		u.deflaterPool.initialize(u.option.PermessageDeflate, option.ReadMaxPayloadSize)
 	}
+	u.Start()
 	return u
+}
+
+// Start 启动时间轮
+func (c *Upgrader) Start() {
+	if c.tw != nil {
+		c.tw.Start()
+	}
+}
+
+// Stop 异步关闭时间轮和所有连接，不阻塞调用方
+func (c *Upgrader) Stop() {
+	if c.cancel != nil {
+		c.cancel()
+	}
+
+	if c.tw != nil {
+		c.tw.Stop()
+	}
+
+	// 同步关闭所有连接
+	for _, sh := range c.conns.shardings {
+		sh.Lock()
+		for _, conn := range sh.m {
+			conn.SetClose(true)
+			_ = conn.Close()
+		}
+		sh.Unlock()
+	}
 }
 
 // 待完善
@@ -173,8 +205,22 @@ func (c *Upgrader) HandleTimeout(ctx context.Context, info timewheel.TimeoutInfo
 // 当有新的连接，需添加到 shard 中，并添加到时间轮
 // Adds a new connection to the shard and the time wheel
 func (c *Upgrader) AddNewConn(conn *Conn) {
+	// 发现同 client_id 的旧连接，先踢掉
+	if prev, ok := c.conns.Load(conn.clientID); ok && prev != nil {
+		if prev != conn {
+			if c.tw != nil {
+				c.tw.DelConnection(prev.clientID, prev.connID)
+			}
+			prev.SetClose(true)
+			_ = prev.Close()
+			c.conns.Delete(conn.clientID)
+		}
+	}
+
 	c.conns.Store(conn.clientID, conn)
-	c.tw.AddConnection(conn, c.option.ConnectionTimeout)
+	if c.tw != nil {
+		c.tw.AddConnection(conn, c.option.ConnectionTimeout)
+	}
 }
 
 // 劫持 HTTP 连接并返回底层的网络连接和缓冲读取器
