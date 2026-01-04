@@ -117,6 +117,7 @@ func (c *Conn) SetClose(status bool) { c.closed.Store(status) }
 // Close 强制关闭底层连接
 // Force close the underlying connection
 func (c *Conn) Close() error {
+	c.SetClose(true)
 	return c.conn.Close()
 }
 

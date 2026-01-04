@@ -99,7 +99,7 @@ func TestMap_Range(t *testing.T) {
 func TestConcurrentMap(t *testing.T) {
 	var as = assert.New(t)
 	var m1 = make(map[string]any)
-	var m2 = NewConcurrentMap[string, uint32]()
+	var m2 = NewConcurrentMap[string, uint32](16, 1024)
 	as.Equal(m2.num, uint64(16))
 	var count = internal.AlphabetNumeric.Intn(1000)
 	for i := 0; i < count; i++ {
@@ -138,7 +138,7 @@ func TestConcurrentMap(t *testing.T) {
 func TestConcurrentMap_Range(t *testing.T) {
 	var as = assert.New(t)
 	var m1 = make(map[any]any)
-	var m2 = NewConcurrentMap[string, uint32](13)
+	var m2 = NewConcurrentMap[string, uint32](13, 512)
 	var count = 1000
 	for i := 0; i < count; i++ {
 		var key = string(internal.AlphabetNumeric.Generate(10))

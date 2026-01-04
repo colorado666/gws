@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	var h = &Handler{conns: gws.NewConcurrentMap[string, *gws.Conn]()}
+	var h = &Handler{conns: gws.NewConcurrentMap[string, *gws.Conn](16, 1024)}
 
 	var upgrader = gws.NewUpgrader(h, &gws.ServerOption{
 		PermessageDeflate: gws.PermessageDeflate{

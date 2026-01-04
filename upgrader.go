@@ -128,6 +128,8 @@ func NewUpgrader(eventHandler Event, option *ServerOption) *Upgrader {
 		panic(err)
 	}
 
+	u.tw.Start()
+
 	// 多 shard 连接管理
 	u.conns = NewConcurrentMap[string, *Conn](u.option.ShardNum, (u.option.ShardInitCap))
 

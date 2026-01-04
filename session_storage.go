@@ -1,10 +1,10 @@
 package gws
 
 import (
+	"hash/fnv"
 	"sync"
 
 	"github.com/colorado666/gws/internal"
-	"github.com/dolthub/maphash"
 )
 
 // SessionStorage 会话存储
@@ -92,10 +92,10 @@ func (c *smap) Range(f func(key string, value any) bool) {
 type (
 	// ConcurrentMap 并发安全的映射结构
 	// concurrency-safe map structure
-	ConcurrentMap[K comparable, V any] struct {
+	ConcurrentMap[K ~string, V any] struct {
 		// hasher 用于计算键的哈希值
 		// compute the hash value of keys
-		hasher maphash.Hasher[K]
+		// hasher maphash.Hasher[K]
 
 		// num 表示分片的数量
 		// represents the number of shardings
@@ -111,12 +111,19 @@ type (
 // creates a new concurrency-safe map
 // arg0 表示分片的数量；arg1 表示分片的初始化容量
 // arg0 represents the number of shardings; arg1 represents the initialized capacity of a sharding.
-func NewConcurrentMap[K comparable, V any](size ...uint64) *ConcurrentMap[K, V] {
-	size = append(size, 0, 0)
-	num, capacity := size[0], size[1]
+func NewConcurrentMap[K ~string, V any](num, capacity uint64) *ConcurrentMap[K, V] {
+	if num == 0 {
+		num = 8
+	}
+
+	if capacity == 0 {
+		capacity = 1024
+	}
+
+	// 把 x 转换成一个 2 的幂
 	num = internal.ToBinaryNumber(internal.SelectValue(num <= 0, 16, num))
 	var cm = &ConcurrentMap[K, V]{
-		hasher:    maphash.NewHasher[K](),
+		// hasher:    maphash.NewHasher[K](),
 		num:       num,
 		shardings: make([]*Map[K, V], num),
 	}
@@ -126,12 +133,26 @@ func NewConcurrentMap[K comparable, V any](size ...uint64) *ConcurrentMap[K, V] 
 	return cm
 }
 
+// 为了避免“同一逻辑 clientID 但字符串不同”导致落到不同 shard，要求：
+// clientID 字符串内容完全一致（大小写、前后空格、编码都一致）
+// shardCount 固定不变
+func hash32(s string) uint32 {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(s))
+	return h.Sum32()
+}
+
+func (c *ConcurrentMap[K, V]) hashIndex(clientID K) uint64 {
+	shardCount := c.num
+	return uint64(hash32(string(clientID)) % uint32(shardCount))
+}
+
 // GetSharding 返回一个键的分片映射
 // returns a map sharding for a key
 // 分片中的操作是无锁的，需要手动加锁
 // The operations inside the sharding are lockless and need to be locked manually.
 func (c *ConcurrentMap[K, V]) GetSharding(key K) *Map[K, V] {
-	var hashCode = c.hasher.Hash(key)
+	var hashCode = c.hashIndex(key)
 	var index = hashCode & (c.num - 1)
 	return c.shardings[index]
 }
