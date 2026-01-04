@@ -208,6 +208,10 @@ type (
 		// Initial capacity for each shard
 		ShardInitCap uint64
 
+		// 客户端唯一 ID 的 key（在connect 的时候放在 session 中，然后在需要的时候使用 key 来提取）
+		// Client unique ID key (stored in session during connection, then used to extract when needed)
+		ClientIDKey string
+
 		// 日志记录器
 		// Logger
 		Logger Logger
@@ -371,6 +375,10 @@ func initServerOption(c *ServerOption) *ServerOption {
 	}
 	if c.ShardInitCap <= 0 {
 		c.ShardInitCap = 1024
+	}
+
+	if c.ClientIDKey == "" {
+		c.ClientIDKey = "client_id"
 	}
 	return c
 }

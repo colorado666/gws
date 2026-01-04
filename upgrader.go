@@ -316,11 +316,11 @@ func (c *Upgrader) doUpgradeFromConn(netConn net.Conn, br *bufio.Reader, r *http
 	socket.connID = c.node.Generate().Int64()
 
 	// 从 sessionStorage 中解析出来 clientID。作为固定的 sessionID
-	clientIDVal, ok := session.Load("client_id")
+	clientIDVal, ok := session.Load(c.option.ClientIDKey)
 	var clientID string
 	if !ok {
 		clientID = strconv.FormatInt(socket.connID, 10)
-		session.Store("client_id", clientID)
+		session.Store(c.option.ClientIDKey, clientID)
 	} else {
 		clientID, _ = clientIDVal.(string)
 	}
