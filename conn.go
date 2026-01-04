@@ -3,8 +3,10 @@ package gws
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/binary"
+	"io"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -13,9 +15,33 @@ import (
 	"github.com/colorado666/gws/internal"
 )
 
+type StreamSession struct {
+	Reader     *io.PipeReader
+	Writer     *io.PipeWriter
+	Cancel     context.CancelFunc
+	Closing    bool
+	TotalBytes uint64
+}
+
+// ConnContext 持有业务侧的连接上下文，读多写少。
+type ConnContext struct {
+	SID                string
+	Role               string
+	ProductID          string
+	OutputAudioFormat  string
+	OutputAudioType    string
+	InputAudioFormat   string
+	OutputAudioChunkMS string
+	OutputAudioRate    string
+	InputAudioRate     string
+	ConvState          string
+}
+
 // Conn WebSocket连接
 // WebSocket connection
 type Conn struct {
+	StreamSession // 内嵌
+	ConnContext   // 内嵌
 	// 互斥锁，用于保护共享资源
 	// Mutex to protect shared resources
 	mu sync.Mutex
@@ -113,6 +139,16 @@ func (c *Conn) Touch(nowTs int64) { c.lastRx.Store(nowTs) }
 
 func (c *Conn) IsClosed() bool       { return c.closed.Load() }
 func (c *Conn) SetClose(status bool) { c.closed.Store(status) }
+
+// Lock 加锁
+func (c *Conn) Lock() {
+	c.mu.Lock()
+}
+
+// Unlock 解锁
+func (c *Conn) Unlock() {
+	c.mu.Unlock()
+}
 
 // Close 强制关闭底层连接
 // Force close the underlying connection
